@@ -10,14 +10,12 @@ import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import com.github.kyuubiran.ezxhelper.init.InitFields
-import com.github.kyuubiran.ezxhelper.utils.argTypes
 import com.github.kyuubiran.ezxhelper.utils.findMethod
 import com.github.kyuubiran.ezxhelper.utils.getIdByName
 import com.github.kyuubiran.ezxhelper.utils.getObjectOrNull
 import com.github.kyuubiran.ezxhelper.utils.hookAfter
 import com.github.kyuubiran.ezxhelper.utils.hookBefore
 import com.github.kyuubiran.ezxhelper.utils.loadClass
-import com.github.kyuubiran.ezxhelper.utils.staticMethod
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import de.robv.android.xposed.callbacks.XCallback
 import io.github.nitsuya.aa.display.R
@@ -30,13 +28,11 @@ import io.github.qauxv.ui.CommonContextWrapper
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Constructor
-import java.lang.reflect.Method
 
 object AaUiHook: AaHook() {
     override val tagName: String = "AAD_AaUiHook"
 
     private lateinit var layoutInfoConstructor: Constructor<*>
-    private var startMethod: Method? = null
 
     private var resLayoutLeftResourceId: Int = 0
     private var resLayoutRightResourceId: Int = 0
@@ -69,12 +65,6 @@ object AaUiHook: AaHook() {
             throw NoSuchMethodException("AaUiHook: not found LayoutInfo class：${classes.size}")
         }
         layoutInfoConstructor = resolveLayoutInfoConstructor(classes[0].name)
-
-        try{
-            startMethod = loadClass("com.google.android.projection.gearhead.service.CarSystemUiControllerService").staticMethod("a", null, argTypes(Intent::class.java))
-        } catch (e: Throwable){
-            log(tagName,  "AaUiHook: not found CarSystemUiControllerService.a static method", e)
-        }
 
         resLayoutGhFacetBarId = InitFields.appContext.resources.getIdentifier("gh_coolwalk_vertical_facet_bar", "layout", InitFields.appContext.packageName)
         resIdStatusBarId = getIdByName("status_bar")

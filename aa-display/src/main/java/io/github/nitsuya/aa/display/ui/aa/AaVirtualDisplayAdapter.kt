@@ -49,8 +49,14 @@ class AaVirtualDisplayAdapter(
         )
     }
 
-    /** Default launch package name: the app package to launch when virtual display is created, can be null */
-    private var mLauncherPackage: String? = null
+    /** User-entered package or flattened component used to resolve the default app. */
+    private var mLauncherSpec: String? = null
+
+    /** Resolved launch activity. Resolution happens in system_server, outside app visibility limits. */
+    private var mLauncherComponent: ComponentName? = null
+
+    /** Actual package name used for task tracking and teardown protection. */
+    private var mLauncherPackageName: String? = null
 
     /** Task ID of the default launch package */
     private var mLauncherPackageTaskId: Int? = null
@@ -111,7 +117,7 @@ class AaVirtualDisplayAdapter(
         mIsDestroying = false
         mTrackedPackageUsers.clear()
         refreshLauncherPackage("connect")
-        trackPackage(mLauncherPackage, 0)
+        trackPackage(mLauncherPackageName, 0)
         val indent = Binder.clearCallingIdentity()
         try {
             mVirtualDisplay = Instances.displayManager.createVirtualDisplay(
@@ -135,7 +141,7 @@ class AaVirtualDisplayAdapter(
         }
         mDisplayId = mVirtualDisplay.display.displayId
         mDensityDpi = densityDpi
-        log(TAG, "virtual display created: id=$mDisplayId, ${width}x$height,$densityDpi, surface=${surface != null}, launcher=${mLauncherPackage.orEmpty()}")
+        log(TAG, "virtual display created: id=$mDisplayId, ${width}x$height,$densityDpi, surface=${surface != null}, launcher=${mLauncherSpec.orEmpty()}")
 
         try {
             Instances.iWindowManager.apply {
@@ -184,15 +190,15 @@ class AaVirtualDisplayAdapter(
         mVirtualDisplay.resize(width, height, densityDpi)
         mDensityDpi = densityDpi
         refreshLauncherPackage("reconnect")
-        trackPackage(mLauncherPackage, 0)
+        trackPackage(mLauncherPackageName, 0)
     }
 
     fun onDestroy() {
         mIsDestroying = true
-        trackPackage(mLauncherPackage, 0)
+        trackPackage(mLauncherPackageName, 0)
         val protectedPackages = linkedSetOf<String>().apply {
             add(BuildConfig.APPLICATION_ID)
-            mLauncherPackage?.trim()?.takeIf { it.isNotEmpty() }?.let { add(it) }
+            mLauncherPackageName?.let { add(it) }
             addAll(getForegroundPackagesOnDisplay(Display.DEFAULT_DISPLAY))
         }
         tryOrNull { Instances.iActivityTaskManager.unregisterTaskStackListener(mTaskStackListener) }
@@ -225,21 +231,27 @@ class AaVirtualDisplayAdapter(
                 }
             }
         }
-        // ShellManager may already be dead during teardown; never let this crash system_server.
+        mSurfaceControls.values.forEach { it.release() }
+        mSurfaceControls.clear()
+        tryOrNull { mDisplayWindowManager.removeView(mForceView) }
+        tryOrNull {
+            if (::mVirtualDisplay.isInitialized) {
+                mVirtualDisplay.release()
+            }
+        }
+        mDisplayId = Display.INVALID_DISPLAY
+        mDensityDpi = 0
+
+        // Keep the service bound until the display has actually been released: this command is
+        // explicitly named "after destroying virtual display" and may rely on that state.
         try {
             mShellManager?.destroyVirtualDisplayAfter()
         } catch (e: Throwable) {
             log(TAG, "onDestroy destroyVirtualDisplayAfter ignored:", e)
         } finally {
+            tryOrNull { CoreManagerService.systemContext.unbindService(mServiceConnection) }
             mShellManager = null
         }
-        tryOrNull { CoreManagerService.systemContext.unbindService(mServiceConnection) }
-        mSurfaceControls.values.forEach { it.release() }
-        mSurfaceControls.clear()
-        tryOrNull { mDisplayWindowManager.removeView(mForceView) }
-        mVirtualDisplay.release()
-        mDisplayId = Display.INVALID_DISPLAY
-        mDensityDpi = 0
     }
 
     private fun getForegroundPackagesOnDisplay(displayId: Int): Set<String> {
@@ -332,21 +344,26 @@ class AaVirtualDisplayAdapter(
      * Called when virtual display is created. If the app is already running, bring it to front; otherwise start a new instance
      */
     private fun startDefaultPackage(){
-        if(mLauncherPackage == null) {
+        val componentName = mLauncherComponent
+        if(componentName == null) {
             log(TAG, "startDefaultPackage skipped: no configured package")
             return
         }
         if(mLauncherPackageTaskId != null){
             moveTaskToFront(mLauncherPackageTaskId!!)
         } else {
-            startActivity(mLauncherPackage!!, 0)
+            startActivity(componentName, 0)
         }
     }
 
     fun startActivity(packageName: String, userId: Int): Boolean{
+        val componentName = resolveLaunchComponent(packageName) ?: return false
+        return startActivity(componentName, userId)
+    }
+
+    private fun startActivity(componentName: ComponentName, userId: Int): Boolean{
         try {
             if(mDisplayId == Display.INVALID_DISPLAY) return false
-            val componentName = resolveLaunchComponent(packageName) ?: return false
             log(TAG, "startActivity: $componentName on display=$mDisplayId user=$userId")
             context.invokeMethod(
                 "startActivityAsUser",
@@ -379,21 +396,28 @@ class AaVirtualDisplayAdapter(
 
     private fun refreshLauncherPackage(reason: String) {
         config?.reload()
-        val configured = AADisplayConfig.LauncherPackage.get(config)
-        val resolved = configured?.trim()?.takeIf { it.isNotEmpty() && resolveLaunchComponent(it) != null }
-        if (mLauncherPackage != resolved) {
-            log(TAG, "launcher[$reason]: configured=${configured.orEmpty()}, resolved=${resolved.orEmpty()}")
+        val configured = AADisplayConfig.LauncherPackage.get(config)?.trim()?.takeIf { it.isNotEmpty() }
+        val component = configured?.let(::resolveLaunchComponent)
+        if (mLauncherSpec != configured || mLauncherComponent != component) {
+            log(TAG, "launcher[$reason]: configured=${configured.orEmpty()}, resolved=${component?.flattenToShortString().orEmpty()}")
+            mLauncherPackageTaskId = null
         }
-        mLauncherPackage = resolved
+        mLauncherSpec = configured
+        mLauncherComponent = component
+        mLauncherPackageName = component?.packageName
     }
 
-    private fun resolveLaunchComponent(packageName: String): ComponentName? {
-        val requested = packageName.trim()
+    private fun resolveLaunchComponent(launchSpec: String): ComponentName? {
+        val requested = launchSpec.trim()
         if (requested.isEmpty()) return null
         return if (requested.contains("/")) {
-            val packageComponent = requested.split("/", limit = 2)
-            if (packageComponent.size != 2) return null
-            ComponentName.createRelative(packageComponent[0], packageComponent[1])
+            val component = ComponentName.unflattenFromString(requested) ?: return null
+            runCatching { Instances.packageManager.getActivityInfo(component, 0) }
+                .map { component }
+                .getOrElse {
+                    log(TAG, "resolveLaunchComponent activity not found: $requested", it)
+                    null
+                }
         } else {
             Instances.packageManager.getLaunchIntentForPackage(requested)?.component
         }
@@ -599,7 +623,7 @@ class AaVirtualDisplayAdapter(
         override fun onTaskCreated(taskId: Int, componentName: ComponentName?) {
             val packageName = componentName?.packageName ?: return
             trackPackage(packageName, 0)
-            if(packageName == mLauncherPackage) {
+            if(packageName == mLauncherPackageName) {
                 mLauncherPackageTaskId = taskId
             }
         }
@@ -619,7 +643,19 @@ class AaVirtualDisplayAdapter(
                 mLauncherPackageTaskId = null
             }
         }
-        override fun onTaskMovedToFront(taskInfo: ActivityManager.RunningTaskInfo) {}
+        override fun onTaskMovedToFront(taskInfo: ActivityManager.RunningTaskInfo) {
+            val packageName = taskInfo.topActivity?.packageName ?: return
+            val userId = runCatching {
+                taskInfo.getObjectAs("userId", Int::class.javaPrimitiveType) as? Int
+            }.getOrNull() ?: 0
+            val displayId = runCatching {
+                taskInfo.getObjectAs("displayId", Int::class.javaPrimitiveType) as? Int
+            }.getOrNull() ?: Display.INVALID_DISPLAY
+            trackPackage(packageName, userId)
+            if (packageName == mLauncherPackageName && displayId == mDisplayId) {
+                mLauncherPackageTaskId = taskInfo.taskId
+            }
+        }
         override fun onTaskDescriptionChanged(taskInfo: ActivityManager.RunningTaskInfo) {}
         override fun onActivityRequestedOrientationChanged(taskId: Int, requestedOrientation: Int) {}
         override fun onTaskRemovalStarted(taskInfo: ActivityManager.RunningTaskInfo?) {}

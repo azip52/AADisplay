@@ -12,7 +12,7 @@
     <string name="menu_github">GitHub</string>
     <string name="default_launch_package_title">Default Launch Package</string>
     <string name="default_launch_package_summary">Any installed app package, or a component such as com.example.app/.MainActivity</string>
-    <string name="default_launch_package_invalid">Enter an installed, launchable app package or activity component</string>
+    <string name="default_launch_package_invalid">Enter a valid app package or activity component</string>
     <string name="save_settings">Save</string>
     <string name="delay_destroy_time_title">Delay Destroy Time</string>
     <string name="delay_destroy_time_summary">Seconds before closing after Android Auto disconnects; 0 closes immediately</string>

@@ -1,6 +1,5 @@
 package io.github.nitsuya.aa.display.ui.main
 
-import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -35,6 +34,8 @@ class MainActivity :
     MenuProvider {
     companion object {
         const val TAG = "AADisplay_MainActivity"
+        private const val LEGACY_DISABLE_WAZE_KEY = "DisableWazeOnAa"
+        private const val LEGACY_DISABLE_GOOGLE_MAPS_KEY = "DisableGoogleMapsOnAa"
     }
 
     private val appConfig by lazy {
@@ -110,6 +111,7 @@ class MainActivity :
             "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
         }
         baseBinding.rootPrivilege.text = if (Shell.getShell().isRoot) "YES" else "NO"
+        restoreLegacyAaAppStateIfNeeded()
         refreshSettingControls()
     }
 
@@ -148,20 +150,28 @@ class MainActivity :
 
     private fun delayDestroyTime(): Int? = baseBinding.etDelayDestroyTime.text?.toString()?.trim()?.toIntOrNull()?.takeIf { it >= 0 }
 
-    private fun isLaunchable(value: String): Boolean {
+    private fun isLaunchSpecValid(value: String): Boolean {
         if (value.isBlank()) return false
-        return if (value.contains('/')) {
-            val parts = value.split('/', limit = 2)
-            if (parts.size != 2 || parts.any { it.isBlank() }) return false
-            val component = ComponentName.createRelative(parts[0], parts[1])
-            runCatching { packageManager.getActivityInfo(component, 0) }.isSuccess
+        val parts = value.split('/', limit = 2)
+        val packageName = parts[0]
+        val packagePattern = Regex("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*")
+        if (!packagePattern.matches(packageName)) return false
+        if (parts.size == 1) return true
+        val activityName = parts[1]
+        if (activityName.isBlank()) return false
+        val normalizedActivity = if (activityName.startsWith('.')) {
+            packageName + activityName
         } else {
-            packageManager.getLaunchIntentForPackage(value) != null
+            activityName
         }
+        return Regex("[A-Za-z_][A-Za-z0-9_${'$'}]*(\\.[A-Za-z_][A-Za-z0-9_${'$'}]*)*")
+            .matches(normalizedActivity)
     }
 
     private fun validateLauncherPackage(showError: Boolean): Boolean {
-        val valid = isLaunchable(launcherPackage())
+        // The settings process is subject to Android package-visibility filtering. Validate
+        // only the syntax here; system_server resolves the package/component when AA starts.
+        val valid = isLaunchSpecValid(launcherPackage())
         baseBinding.tilLauncherPackage.error = if (!valid && showError) getString(R.string.default_launch_package_invalid) else null
         return valid
     }
@@ -170,6 +180,53 @@ class MainActivity :
         val valid = delayDestroyTime() != null
         baseBinding.tilDelayDestroyTime.error = if (!valid && showError) getString(R.string.delay_destroy_time_invalid) else null
         return valid
+    }
+
+    /** Undo system state changed by the removed Waze/Google Maps suppression feature. */
+    private fun restoreLegacyAaAppStateIfNeeded() {
+        val shell = Shell.getShell()
+        if (!shell.isRoot) return
+        fun globalSettingEnabled(key: String): Boolean = shell.newJob()
+            .add("settings get global $key")
+            .exec()
+            .out
+            .firstOrNull()
+            ?.trim() == "1"
+
+        // Check both preferences and global state because the first customized build removed the
+        // preferences before it knew that the component changes also needed to be rolled back.
+        val restoreWaze = appConfig.getBoolean(LEGACY_DISABLE_WAZE_KEY, false) ||
+            globalSettingEnabled("aad_disable_waze_on_aa")
+        val restoreGoogleMaps = appConfig.getBoolean(LEGACY_DISABLE_GOOGLE_MAPS_KEY, false) ||
+            globalSettingEnabled("aad_disable_google_maps_on_aa")
+        if (!restoreWaze && !restoreGoogleMaps) return
+
+        val commands = mutableListOf<String>()
+        if (restoreWaze) {
+            commands += "pm enable com.waze/com.waze.car_lib.WazeCarAppService"
+            commands += "pm enable com.waze/com.waze.android_auto.AndroidAutoPhoneActivity"
+            commands += "settings put global aad_disable_waze_on_aa 0"
+        }
+        if (restoreGoogleMaps) {
+            commands += "pm enable com.google.android.apps.maps/com.google.android.apps.gmm.car.GmmCarProjectionService"
+            commands += "pm enable com.google.android.apps.maps/com.google.android.apps.gmm.car.LimitedGmmCarProjectionService"
+            commands += "pm enable com.google.android.apps.maps/com.google.android.apps.gmm.car.projected.auxiliarymap.GmmCarAuxiliaryProjectionService"
+            commands += "pm enable com.google.android.apps.maps/com.google.android.apps.gmm.car.WidescreenWidgetLimitedGmmCarProjectionService"
+            commands += "pm enable com.google.android.apps.maps/com.google.android.apps.auto.client.activity.ghost.GhostActivity"
+            commands += "settings put global aad_disable_google_maps_on_aa 0"
+        }
+
+        val result = shell.newJob().add(*commands.toTypedArray()).exec()
+        if (result.isSuccess) {
+            appConfig.edit()
+                .remove(LEGACY_DISABLE_WAZE_KEY)
+                .remove(LEGACY_DISABLE_GOOGLE_MAPS_KEY)
+                .commit()
+            SharedPreferencesAccess.makeReadableForHooks(this, AADisplayConfig.ConfigName)
+            Log.i(TAG, "Restored legacy Waze/Google Maps component state")
+        } else {
+            Log.w(TAG, "Failed to restore legacy Waze/Google Maps component state: code=${result.code}")
+        }
     }
 
     private fun persistSettings() {
@@ -188,8 +245,6 @@ class MainActivity :
             .putString(AADisplayConfig.DestroyVirtualDisplayAfter.key, destroyAfter)
             .putBoolean(AADisplayConfig.AutoOpen.key, false)
             .remove(AADisplayConfig.HomePackage.key)
-            .remove("DisableWazeOnAa")
-            .remove("DisableGoogleMapsOnAa")
             .commit()
         val readableForHooks = SharedPreferencesAccess.makeReadableForHooks(this, AADisplayConfig.ConfigName)
         if (!saved || !readableForHooks) {

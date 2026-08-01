@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  assemble-debug:
+  assemble:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -28,12 +28,19 @@ jobs:
       - name: Install Android API 36
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
 
-      - name: Assemble debug APK
-        run: ./gradlew :aa-display:assembleDebug --stacktrace
+      - name: Assemble debug and release APKs
+        run: ./gradlew :aa-display:assembleDebug :aa-display:assembleRelease --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: aa-display-debug
           path: aa-display/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: aa-display-release
+          path: aa-display/build/outputs/apk/release/*.apk
           if-no-files-found: error

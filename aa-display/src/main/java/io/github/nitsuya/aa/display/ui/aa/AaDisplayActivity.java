@@ -75,6 +75,18 @@ public class AaDisplayActivity extends CarActivity {
             case KeyEvent.KEYCODE_DPAD_RIGHT:
                 AaDisplayActivityKt.INSTANCE.pressKey(keyCode);
                 return true;
+            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP:
+                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_UP);
+                return true;
+            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_DOWN:
+                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_DOWN);
+                return true;
+            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_LEFT:
+                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_LEFT);
+                return true;
+            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_RIGHT:
+                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_RIGHT);
+                return true;
             case KeyEvent.KEYCODE_BACK:
                 AaDisplayActivityKt.INSTANCE.pressKey(keyCode);
                 return true;
@@ -85,15 +97,26 @@ public class AaDisplayActivity extends CarActivity {
     }
 
     private boolean onGenericMotionEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_SCROLL: {
-                float vScroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
-                if (vScroll < 0) {
-                    AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_MEDIA_REWIND);
-                } else if (vScroll > 0) {
-                    AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_MEDIA_FAST_FORWARD);
-                }
-            }
+        if (event.getActionMasked() != MotionEvent.ACTION_SCROLL) {
+            return false;
+        }
+
+        // Rotary encoders normally report AXIS_SCROLL. Keep AXIS_VSCROLL as a fallback for
+        // head units that expose the controller as a mouse wheel.
+        float scroll = event.getAxisValue(MotionEvent.AXIS_SCROLL);
+        if (scroll == 0f) {
+            scroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+        }
+        if (scroll == 0f) {
+            return false;
+        }
+
+        int keyCode = scroll > 0
+                ? KeyEvent.KEYCODE_DPAD_DOWN
+                : KeyEvent.KEYCODE_DPAD_UP;
+        int steps = Math.min(20, Math.max(1, Math.round(Math.abs(scroll))));
+        for (int i = 0; i < steps; i++) {
+            AaDisplayActivityKt.INSTANCE.pressKey(keyCode);
         }
         return true;
     }

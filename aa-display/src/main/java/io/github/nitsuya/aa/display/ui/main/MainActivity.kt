@@ -1,5 +1,6 @@
 package io.github.nitsuya.aa.display.ui.main
 
+import android.content.res.ColorStateList
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -13,7 +14,6 @@ import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.core.view.MenuProvider
 import androidx.core.widget.doAfterTextChanged
-import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.topjohnwu.superuser.Shell
 import io.github.duzhaokun123.template.bases.BaseActivity
@@ -23,7 +23,6 @@ import io.github.nitsuya.aa.display.R
 import io.github.nitsuya.aa.display.databinding.ActivityMainBinding
 import io.github.nitsuya.aa.display.util.AADisplayConfig
 import io.github.nitsuya.aa.display.util.SharedPreferencesAccess
-import io.github.nitsuya.template.bases.getAttr
 
 class MainActivity :
     BaseActivity<ActivityMainBinding>(
@@ -43,6 +42,7 @@ class MainActivity :
     }
 
     private var savedLauncherPackage = ""
+    private var savedAutoOpen = false
     private var savedDelayDestroyTime = 180
     private var savedCreateVirtualDisplayBefore = ""
     private var savedDestroyVirtualDisplayAfter = ""
@@ -56,6 +56,7 @@ class MainActivity :
 
     override fun initViews() {
         super.initViews()
+        baseBinding.switchAutoOpen.setOnCheckedChangeListener { _, _ -> updateSaveButtonState() }
         baseBinding.etLauncherPackage.inputType = InputType.TYPE_CLASS_TEXT
         baseBinding.etDelayDestroyTime.inputType = InputType.TYPE_CLASS_NUMBER
         listOf(
@@ -75,26 +76,19 @@ class MainActivity :
                 baseBinding.ivIcon.setImageResource(R.drawable.ic_error_outline_24)
                 baseBinding.tvActive.setText(R.string.not_activated)
                 baseBinding.tvVersion.text = ""
-                val colorError = android.R.attr.colorError
-                val colorOnError = theme.getAttr(com.google.android.material.R.attr.colorOnError).data
-                baseBinding.mcvStatus.setCardBackgroundColor(colorError)
-                baseBinding.mcvStatus.outlineAmbientShadowColor = colorError
-                baseBinding.mcvStatus.outlineSpotShadowColor = colorError
-                baseBinding.tvActive.setTextColor(colorOnError)
-                baseBinding.tvVersion.setTextColor(colorOnError)
+                applyStatusAppearance(R.color.status_error_container, R.color.status_error_content)
             }
             BuildConfig.BUILD_TIME -> {
                 baseBinding.ivIcon.setImageResource(R.drawable.ic_round_check_circle_24)
                 baseBinding.tvActive.setText(R.string.activated)
-                baseBinding.tvVersion.text = CoreApi.versionName
+                baseBinding.tvVersion.text = "版本：${CoreApi.versionName}"
+                applyStatusAppearance(R.color.status_activated_container, R.color.status_activated_content)
             }
             else -> {
                 baseBinding.ivIcon.setImageResource(R.drawable.ic_warning_amber_24)
                 baseBinding.tvActive.setText(R.string.need_reboot)
-                baseBinding.tvVersion.text = "system: ${CoreApi.versionName}\nmodule: ${BuildConfig.VERSION_NAME}"
-                baseBinding.mcvStatus.setCardBackgroundColor(
-                    MaterialColors.harmonizeWithPrimary(this, getColor(R.color.color_warning))
-                )
+                baseBinding.tvVersion.text = "系统中已加载：${CoreApi.versionName}\n当前模块：${BuildConfig.VERSION_NAME}"
+                applyStatusAppearance(R.color.status_warning_container, R.color.status_warning_content)
                 baseBinding.mcvStatus.setOnClickListener {
                     MaterialAlertDialogBuilder(this)
                         .setTitle(R.string.need_reboot)
@@ -110,7 +104,7 @@ class MainActivity :
         } else {
             "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
         }
-        baseBinding.rootPrivilege.text = if (Shell.getShell().isRoot) "YES" else "NO"
+        baseBinding.rootPrivilege.text = if (Shell.getShell().isRoot) "已授权" else "未授权"
         disableLegacyCustomAaRail()
         restoreLegacyAaAppStateIfNeeded()
         refreshSettingControls()
@@ -127,17 +121,19 @@ class MainActivity :
 
     override fun onMenuItemSelected(menuItem: MenuItem): Boolean = when (menuItem.itemId) {
         R.id.github -> {
-            startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/Stashboy/AADisplay".toUri()))
+            startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/azip52/AADisplay".toUri()))
             true
         }
         else -> false
     }
 
     private fun refreshSettingControls() {
+        savedAutoOpen = AADisplayConfig.AutoOpen.get(appConfig)
         savedLauncherPackage = AADisplayConfig.LauncherPackage.get(appConfig).orEmpty()
         savedDelayDestroyTime = AADisplayConfig.DelayDestroyTime.get(appConfig).coerceAtLeast(0)
         savedCreateVirtualDisplayBefore = appConfig.getString(AADisplayConfig.CreateVirtualDisplayBefore.key, "").orEmpty()
         savedDestroyVirtualDisplayAfter = appConfig.getString(AADisplayConfig.DestroyVirtualDisplayAfter.key, "").orEmpty()
+        baseBinding.switchAutoOpen.isChecked = savedAutoOpen
         baseBinding.etLauncherPackage.setText(savedLauncherPackage)
         baseBinding.etDelayDestroyTime.setText(savedDelayDestroyTime.toString())
         baseBinding.etCreateVirtualDisplayBefore.setText(savedCreateVirtualDisplayBefore)
@@ -181,6 +177,18 @@ class MainActivity :
         val valid = delayDestroyTime() != null
         baseBinding.tilDelayDestroyTime.error = if (!valid && showError) getString(R.string.delay_destroy_time_invalid) else null
         return valid
+    }
+
+    private fun applyStatusAppearance(containerColorRes: Int, contentColorRes: Int) {
+        val containerColor = getColor(containerColorRes)
+        val contentColor = getColor(contentColorRes)
+        baseBinding.mcvStatus.setCardBackgroundColor(containerColor)
+        baseBinding.mcvStatus.strokeColor = contentColor
+        baseBinding.mcvStatus.outlineAmbientShadowColor = containerColor
+        baseBinding.mcvStatus.outlineSpotShadowColor = containerColor
+        baseBinding.ivIcon.imageTintList = ColorStateList.valueOf(contentColor)
+        baseBinding.tvActive.setTextColor(contentColor)
+        baseBinding.tvVersion.setTextColor(contentColor)
     }
 
     private fun disableLegacyCustomAaRail() {
@@ -252,7 +260,7 @@ class MainActivity :
             .putString(AADisplayConfig.DelayDestroyTime.key, delay.toString())
             .putString(AADisplayConfig.CreateVirtualDisplayBefore.key, createBefore)
             .putString(AADisplayConfig.DestroyVirtualDisplayAfter.key, destroyAfter)
-            .putBoolean(AADisplayConfig.AutoOpen.key, false)
+            .putBoolean(AADisplayConfig.AutoOpen.key, baseBinding.switchAutoOpen.isChecked)
             .putBoolean(AADisplayConfig.CloseLauncherDashboard.key, false)
             .remove(AADisplayConfig.HomePackage.key)
             .commit()
@@ -261,6 +269,7 @@ class MainActivity :
             Toast.makeText(this, R.string.settings_saved_pref_access_failed, Toast.LENGTH_LONG).show()
             return
         }
+        savedAutoOpen = baseBinding.switchAutoOpen.isChecked
         savedLauncherPackage = launcher
         savedDelayDestroyTime = delay
         savedCreateVirtualDisplayBefore = createBefore
@@ -270,7 +279,8 @@ class MainActivity :
     }
 
     private fun updateSaveButtonState() {
-        val changed = launcherPackage() != savedLauncherPackage ||
+        val changed = baseBinding.switchAutoOpen.isChecked != savedAutoOpen ||
+            launcherPackage() != savedLauncherPackage ||
             delayDestroyTime() != savedDelayDestroyTime ||
             baseBinding.etCreateVirtualDisplayBefore.text?.toString().orEmpty() != savedCreateVirtualDisplayBefore ||
             baseBinding.etDestroyVirtualDisplayAfter.text?.toString().orEmpty() != savedDestroyVirtualDisplayAfter

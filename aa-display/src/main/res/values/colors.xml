@@ -1,3 +1,9 @@
 <resources>
     <color name="color_warning">#FBC02D</color>
+    <color name="status_activated_container">#D8F3DC</color>
+    <color name="status_activated_content">#1B5E20</color>
+    <color name="status_warning_container">#FFF3CD</color>
+    <color name="status_warning_content">#6D4C00</color>
+    <color name="status_error_container">#FDE2E2</color>
+    <color name="status_error_content">#8B1E1E</color>
 </resources>

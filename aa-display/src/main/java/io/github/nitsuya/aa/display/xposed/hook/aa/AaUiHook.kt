@@ -1,7 +1,9 @@
 package io.github.nitsuya.aa.display.xposed.hook.aa
 
+import android.content.ComponentName
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -10,29 +12,38 @@ import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import com.github.kyuubiran.ezxhelper.init.InitFields
+import com.github.kyuubiran.ezxhelper.utils.argTypes
 import com.github.kyuubiran.ezxhelper.utils.findMethod
 import com.github.kyuubiran.ezxhelper.utils.getIdByName
 import com.github.kyuubiran.ezxhelper.utils.getObjectOrNull
 import com.github.kyuubiran.ezxhelper.utils.hookAfter
 import com.github.kyuubiran.ezxhelper.utils.hookBefore
 import com.github.kyuubiran.ezxhelper.utils.loadClass
+import com.github.kyuubiran.ezxhelper.utils.staticMethod
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import de.robv.android.xposed.callbacks.XCallback
+import io.github.nitsuya.aa.display.BuildConfig
 import io.github.nitsuya.aa.display.R
+import io.github.nitsuya.aa.display.service.AaActivityService
 import io.github.nitsuya.aa.display.util.AABroadcastConst
 import io.github.nitsuya.aa.display.util.AADisplayConfig
 import io.github.nitsuya.aa.display.xposed.hook.AaHook
 import io.github.nitsuya.aa.display.xposed.hook.abortMethod
 import io.github.nitsuya.aa.display.xposed.log
+import io.github.nitsuya.template.bases.runMain
 import io.github.qauxv.ui.CommonContextWrapper
+import kotlinx.coroutines.delay
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Constructor
+import java.lang.reflect.Method
 
 object AaUiHook: AaHook() {
     override val tagName: String = "AAD_AaUiHook"
 
     private lateinit var layoutInfoConstructor: Constructor<*>
+    private var startMethod: Method? = null
+    private var lastAutoOpenRequestAt = 0L
 
     private var resLayoutLeftResourceId: Int = 0
     private var resLayoutRightResourceId: Int = 0
@@ -66,6 +77,13 @@ object AaUiHook: AaHook() {
         }
         layoutInfoConstructor = resolveLayoutInfoConstructor(classes[0].name)
 
+        try {
+            startMethod = loadClass("com.google.android.projection.gearhead.service.CarSystemUiControllerService")
+                .staticMethod("a", null, argTypes(Intent::class.java))
+        } catch (e: Throwable) {
+            log(tagName, "AaUiHook: Auto Open method is unavailable", e)
+        }
+
         resLayoutGhFacetBarId = InitFields.appContext.resources.getIdentifier("gh_coolwalk_vertical_facet_bar", "layout", InitFields.appContext.packageName)
         resIdStatusBarId = getIdByName("status_bar")
         resIdLauncherAndDashboardIconContainerId = getIdByName("launcher_and_dashboard_icon_container")
@@ -96,6 +114,7 @@ object AaUiHook: AaHook() {
 
     override fun hook(config: SharedPreferences?, lpparam: XC_LoadPackage.LoadPackageParam) {
         log(tagName,  "AaUiHook: ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        hookAutoOpen(config)
         // Keep Android Auto's native rail/bottom-bar selection and focus graph by default.
         // The old custom rail remains available only for legacy configurations that explicitly
         // enabled CloseLauncherDashboard.
@@ -109,6 +128,29 @@ object AaUiHook: AaHook() {
             }
         }
         hookRadius(config)
+    }
+
+    private fun hookAutoOpen(config: SharedPreferences?) {
+        if (!AADisplayConfig.AutoOpen.get(config)) return
+        layoutInfoConstructor.hookAfter {
+            val method = startMethod ?: return@hookAfter
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastAutoOpenRequestAt < 10_000L) return@hookAfter
+            lastAutoOpenRequestAt = now
+            runMain {
+                delay(1000)
+                try {
+                    method.invoke(null, Intent().apply {
+                        component = ComponentName(BuildConfig.APPLICATION_ID, AaActivityService::class.java.name)
+                        putExtra("android.intent.extra.PACKAGE_NAME", BuildConfig.APPLICATION_ID)
+                    })
+                    log(tagName, "Auto Open requested AADisplay")
+                } catch (e: Throwable) {
+                    lastAutoOpenRequestAt = 0L
+                    log(tagName, "Auto Open failed", e)
+                }
+            }
+        }
     }
 
     private fun hookLayout() {

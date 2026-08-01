@@ -5,7 +5,6 @@
 ![Xposed Module](https://img.shields.io/badge/Xposed-Module-blue)
 ![Android SDK min 31](https://img.shields.io/badge/Android%20SDK-%3E%3D%2031-brightgreen?logo=android)
 ![Android SDK target 36](https://img.shields.io/badge/Android%20SDK-target%2036-brightgreen?logo=android)
-![Android Auto 17.2](https://img.shields.io/badge/Android%20Auto-17.2-tested-success?logo=androidauto)
 
 > **Powered by Codex** — 本定制版本的分析、开发、复查、文档与自动构建配置由 Codex 协助完成。
 
@@ -16,9 +15,6 @@ AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 X
 - 当前模块版本：`0.23#17.2-r7`
 - 当前已适配并实车测试的 Android Auto 版本：`17.2`
 - 最低 Android 系统版本：Android 12（API 31）
-- 编译及目标 API：36
-- 手机端状态页显示的 API 数字是当前设备的系统 API；显示 API 36 代表设备运行 Android 16，并不改变最低 API 31 的安装要求。
-- 其他 Android Auto 版本可能能够使用，但未经本项目实车确认。
 
 ## 主要功能
 
@@ -34,7 +30,7 @@ AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 X
 
 ## 使用条件
 
-- Android 12 或更高版本（最低 API 31）。项目使用 API 36 编译并以 API 36 为目标，但这不表示只能安装在 API 36 上。
+- Android 12 或更高版本（最低 API 31）。
 - 已取得 Root 权限。
 - 已安装并启用 LSPosed 或兼容的 Xposed 框架。
 - 已安装 Android Auto。

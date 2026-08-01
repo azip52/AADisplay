@@ -96,12 +96,17 @@ object AaUiHook: AaHook() {
 
     override fun hook(config: SharedPreferences?, lpparam: XC_LoadPackage.LoadPackageParam) {
         log(tagName,  "AaUiHook: ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        hookBaseClick()
-        if (canHookLayout) {
-            hookLayout()
-        }
-        if (canHookFacetBar) {
-            hookFacetBar(config)
+        // Keep Android Auto's native rail/bottom-bar selection and focus graph by default.
+        // The old custom rail remains available only for legacy configurations that explicitly
+        // enabled CloseLauncherDashboard.
+        if (AADisplayConfig.CloseLauncherDashboard.get(config)) {
+            hookBaseClick()
+            if (canHookLayout) {
+                hookLayout()
+            }
+            if (canHookFacetBar) {
+                hookFacetBar(config)
+            }
         }
         hookRadius(config)
     }

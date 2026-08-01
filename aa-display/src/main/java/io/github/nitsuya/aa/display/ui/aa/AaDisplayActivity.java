@@ -73,20 +73,13 @@ public class AaDisplayActivity extends CarActivity {
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                AaDisplayActivityKt.INSTANCE.pressKey(keyCode);
-                return true;
             case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP:
-                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_UP);
-                return true;
             case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_DOWN:
-                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_DOWN);
-                return true;
             case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_LEFT:
-                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_LEFT);
-                return true;
             case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_RIGHT:
-                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_RIGHT);
-                return true;
+                // Leave directional focus navigation to Android Auto so focus can cross from
+                // AADisplay into the native navigation bar.
+                return super.onKeyDown(keyCode, keyEvent);
             case KeyEvent.KEYCODE_BACK:
                 AaDisplayActivityKt.INSTANCE.pressKey(keyCode);
                 return true;

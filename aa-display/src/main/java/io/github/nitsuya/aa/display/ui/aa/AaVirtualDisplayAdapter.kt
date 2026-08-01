@@ -277,8 +277,15 @@ class AaVirtualDisplayAdapter(
     fun onTouch(event: MotionEvent) = injectInputEvent(event)
 
     fun onPressKey(action: Int) {
-        injectInputEvent(createKeyEvent(KeyEvent.ACTION_DOWN, action))
-        injectInputEvent(createKeyEvent(KeyEvent.ACTION_UP, action))
+        // Keep Nitsuya's event shape. Some head-unit/phone combinations ignore BACK when it is
+        // synthesized as a virtual hard key with FLAG_FROM_SYSTEM.
+        val downTime = SystemClock.uptimeMillis()
+        injectInputEvent(KeyEvent(downTime, downTime, KeyEvent.ACTION_DOWN, action, 0).apply {
+            source = InputDevice.SOURCE_KEYBOARD
+        })
+        injectInputEvent(KeyEvent(downTime, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, action, 0).apply {
+            source = InputDevice.SOURCE_KEYBOARD
+        })
     }
 
     fun addMirror(surfaceControl: SurfaceControl){
@@ -499,26 +506,6 @@ class AaVirtualDisplayAdapter(
             log(TAG, "injectInputEvent exception:", e)
             false
         }
-    }
-
-    /**
-     * Matches Android's VirtualDisplayTaskEmbedder key event shape for back navigation.
-     * See AOSP: VirtualDisplayTaskEmbedder#createKeyEvent()
-     */
-    private fun createKeyEvent(action: Int, keyCode: Int): KeyEvent {
-        val whenMillis = SystemClock.uptimeMillis()
-        return KeyEvent(
-            whenMillis,
-            whenMillis,
-            action,
-            keyCode,
-            0,
-            0,
-            KeyCharacterMap.VIRTUAL_KEYBOARD,
-            0,
-            KeyEvent.FLAG_FROM_SYSTEM or KeyEvent.FLAG_VIRTUAL_HARD_KEY,
-            InputDevice.SOURCE_KEYBOARD
-        )
     }
 
     private fun trackPackage(packageName: String?, userId: Int = 0) {

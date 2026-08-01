@@ -111,6 +111,7 @@ class MainActivity :
             "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
         }
         baseBinding.rootPrivilege.text = if (Shell.getShell().isRoot) "YES" else "NO"
+        disableLegacyCustomAaRail()
         restoreLegacyAaAppStateIfNeeded()
         refreshSettingControls()
     }
@@ -182,6 +183,14 @@ class MainActivity :
         return valid
     }
 
+    private fun disableLegacyCustomAaRail() {
+        if (!AADisplayConfig.CloseLauncherDashboard.get(appConfig)) return
+        if (appConfig.edit().putBoolean(AADisplayConfig.CloseLauncherDashboard.key, false).commit()) {
+            SharedPreferencesAccess.makeReadableForHooks(this, AADisplayConfig.ConfigName)
+            Log.i(TAG, "Disabled legacy custom AA vertical rail; native AA navigation will be used")
+        }
+    }
+
     /** Undo system state changed by the removed Waze/Google Maps suppression feature. */
     private fun restoreLegacyAaAppStateIfNeeded() {
         val shell = Shell.getShell()
@@ -244,6 +253,7 @@ class MainActivity :
             .putString(AADisplayConfig.CreateVirtualDisplayBefore.key, createBefore)
             .putString(AADisplayConfig.DestroyVirtualDisplayAfter.key, destroyAfter)
             .putBoolean(AADisplayConfig.AutoOpen.key, false)
+            .putBoolean(AADisplayConfig.CloseLauncherDashboard.key, false)
             .remove(AADisplayConfig.HomePackage.key)
             .commit()
         val readableForHooks = SharedPreferencesAccess.makeReadableForHooks(this, AADisplayConfig.ConfigName)

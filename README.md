@@ -1,12 +1,24 @@
 # AADisplay
 
 [![Build AADisplay](https://github.com/azip52/AADisplay/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/azip52/AADisplay/actions/workflows/build.yml?query=branch%3Amaster)
+[![Powered by Codex](https://img.shields.io/badge/Powered%20by-Codex-111827?logo=openai&logoColor=white)](https://openai.com/codex/)
 ![Xposed Module](https://img.shields.io/badge/Xposed-Module-blue)
-![Android 12+](https://img.shields.io/badge/Android-12%2B-brightgreen?logo=android)
+![Android SDK min 31](https://img.shields.io/badge/Android%20SDK-%3E%3D%2031-brightgreen?logo=android)
+![Android SDK target 36](https://img.shields.io/badge/Android%20SDK-target%2036-brightgreen?logo=android)
+![Android Auto 17.2](https://img.shields.io/badge/Android%20Auto-17.2-tested-success?logo=androidauto)
 
-AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 Xposed 模块。本仓库 fork 自 [Stashboy/AADisplay](https://github.com/Stashboy/AADisplay)，保留其对新版 Android Auto、显示生命周期、Surface、输入及 LSPosed 配置读取等方面的适配。
+> **Powered by Codex** — 本定制版本的分析、开发、复查、文档与自动构建配置由 Codex 协助完成。
 
-本项目恢复并调整了部分上游行为，包括任意应用包名/Activity 组件启动、自定义虚拟屏销毁延迟，以及创建和销毁虚拟屏前后的 Root Shell 命令。同时参考了 [ankittand0n/AADisplay](https://github.com/ankittand0n/AADisplay) 的原生 Android Auto 操作栏与实体按键焦点处理方式。
+AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 Xposed 模块。本仓库 fork 自 [Stashboy/AADisplay](https://github.com/Stashboy/AADisplay)，保留其对新版 Android Auto、显示生命周期、Surface、输入及 LSPosed 配置读取等方面的适配，同时恢复并调整了部分上游行为，包括任意应用包名/Activity 组件启动、自定义虚拟屏销毁延迟，以及创建和销毁虚拟屏前后的 Root Shell 命令，并参考了 [ankittand0n/AADisplay](https://github.com/ankittand0n/AADisplay) 的原生 Android Auto 操作栏与实体按键焦点处理方式。
+
+## 版本与适配情况
+
+- 当前模块版本：`0.23#17.2-r7`
+- 当前已适配并实车测试的 Android Auto 版本：`17.2`
+- 最低 Android 系统版本：Android 12（API 31）
+- 编译及目标 API：36
+- 手机端状态页显示的 API 数字是当前设备的系统 API；显示 API 36 代表设备运行 Android 16，并不改变最低 API 31 的安装要求。
+- 其他 Android Auto 版本可能能够使用，但未经本项目实车确认。
 
 ## 主要功能
 
@@ -15,14 +27,14 @@ AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 X
 - 支持明确指定 Activity，例如 `com.example.app/.MainActivity`。
 - 可选择连接 Android Auto 后自动打开 AADisplay。
 - 使用 Android Auto 原生底部操作栏及焦点导航。
-- 支持实体返回键、方向键、确认键和旋钮输入。
+- 支持实体返回键、方向键、确认键和旋钮输入（仅在我自己的车机上测试）。
 - 可设置 Android Auto 断开后的虚拟屏销毁延迟。
 - 可在创建虚拟屏前、销毁虚拟屏后执行自定义 Root Shell 命令。
 - 保留新版 Android Auto 兼容、虚拟屏生命周期及输入稳定性修复。
 
 ## 使用条件
 
-- Android 12 或更高版本（API 31+）。
+- Android 12 或更高版本（最低 API 31）。项目使用 API 36 编译并以 API 36 为目标，但这不表示只能安装在 API 36 上。
 - 已取得 Root 权限。
 - 已安装并启用 LSPosed 或兼容的 Xposed 框架。
 - 已安装 Android Auto。
@@ -35,7 +47,7 @@ AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 X
    - Android Auto（`com.google.android.projection.gearhead`）
 3. 打开手机端 AADisplay，设置自动打开、默认启动包名、销毁延迟及可选 Shell 命令。
 4. 保存设置后重启手机，使系统框架与 Android Auto 重新加载模块和配置。
-5. 在车机的 Android Auto 应用列表中打开 AADisplay；如果启用了“自动打开”，AA 界面初始化后会自动进入 AADisplay。
+5. 在车机的 Android Auto 应用列表中打开 AADisplay；如果启用了“自动打开”，AA 界面初始化后会自动进入 AADisplay（即启动你填写的应用包名）。
 
 ## 下载
 
@@ -66,10 +78,8 @@ aa-display/build/outputs/apk/
 ## 致谢
 
 - 感谢最早的作者 [Nitsuya](https://github.com/Nitsuya) 创建 [Nitsuya/AADisplay](https://github.com/Nitsuya/AADisplay)。
-- 感谢 [Stashboy](https://github.com/Stashboy) 对新版 Android Auto 与显示稳定性的持续适配。
-- 感谢 [ankittand0n](https://github.com/ankittand0n) 的相关实现，为原生操作栏和实体按键行为提供参考。
-
-**Powered by Codex.**
+- 感谢 [Stashboy/AADisplay](https://github.com/Stashboy/AADisplay) 对新版 Android Auto 与显示稳定性的持续适配。
+- 感谢 [ankittand0n/AADisplay](https://github.com/ankittand0n/AADisplay) 的相关实现，为原生操作栏和实体按键行为提供参考。
 
 ## 许可
 

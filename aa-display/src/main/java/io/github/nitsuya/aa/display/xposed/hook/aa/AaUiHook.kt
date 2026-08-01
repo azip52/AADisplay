@@ -1,6 +1,5 @@
 package io.github.nitsuya.aa.display.xposed.hook.aa
 
-import android.content.ComponentName
 import android.content.Intent
 import android.content.SharedPreferences
 import android.view.KeyEvent
@@ -21,17 +20,13 @@ import com.github.kyuubiran.ezxhelper.utils.loadClass
 import com.github.kyuubiran.ezxhelper.utils.staticMethod
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import de.robv.android.xposed.callbacks.XCallback
-import io.github.nitsuya.aa.display.BuildConfig
 import io.github.nitsuya.aa.display.R
-import io.github.nitsuya.aa.display.service.AaActivityService
 import io.github.nitsuya.aa.display.util.AABroadcastConst
 import io.github.nitsuya.aa.display.util.AADisplayConfig
 import io.github.nitsuya.aa.display.xposed.hook.AaHook
 import io.github.nitsuya.aa.display.xposed.hook.abortMethod
 import io.github.nitsuya.aa.display.xposed.log
-import io.github.nitsuya.template.bases.runMain
 import io.github.qauxv.ui.CommonContextWrapper
-import kotlinx.coroutines.delay
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
 import java.lang.reflect.Constructor
@@ -187,7 +182,6 @@ object AaUiHook: AaHook() {
 
     private fun hookFacetBar(config: SharedPreferences?) {
         val closeLauncherDashboard = AADisplayConfig.CloseLauncherDashboard.get(config)
-        val autoOpen = AADisplayConfig.AutoOpen.get(config)
         findMethod(LayoutInflater::class.java) {
             name == "inflate"
             && parameterCount == 3
@@ -213,21 +207,6 @@ object AaUiHook: AaHook() {
                 }
             }
             val aaFacetBar = layoutInflater.inflate(R.layout.aa_facet_bar, resultViewGroupParent, false) as ConstraintLayout
-            if(autoOpen){
-                aaFacetBar.post {
-                    runMain {
-                        delay(1000)
-                        try{
-                            startMethod?.invoke(null, Intent().apply {
-                                component = ComponentName(BuildConfig.APPLICATION_ID, AaActivityService::class.java.name)
-                                putExtra("android.intent.extra.PACKAGE_NAME", BuildConfig.APPLICATION_ID)
-                            })
-                        } catch (e: Throwable) {
-                            log(tagName, "CarSystemUiControllerService.a start app error", e)
-                        }
-                    }
-                }
-            }
             val createBtn: (resId: Int, block: View.() -> Unit) -> Int = { resId, block ->
                 val btn = ImageView(ctx).apply {
                     id = View.generateViewId()

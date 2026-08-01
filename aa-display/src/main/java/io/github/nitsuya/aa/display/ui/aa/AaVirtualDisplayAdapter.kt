@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
@@ -41,7 +40,6 @@ class AaVirtualDisplayAdapter(
 ) {
     companion object {
         const val TAG = "AADisplay_AaVirtualDisplayAdapter"
-        private const val WINDOWING_MODE_PINNED = 2
         private const val DISPLAY_IME_POLICY_LOCAL = 0
 
         /** Package names to ignore in recent task list */
@@ -49,24 +47,11 @@ class AaVirtualDisplayAdapter(
             BuildConfig.APPLICATION_ID,
             "com.android.launcher3"
         )
-
-        private val BLOCKED_HOME_PACKAGES = setOf(
-            BuildConfig.APPLICATION_ID,
-            "android",
-            "com.android.internal.app",
-            "com.android.settings"
-        )
     }
 
     /** Default launch package name: the app package to launch when virtual display is created, can be null */
     private var mLauncherPackage: String? = null
 
-    /** Home package for AADisplay task-view behavior, internally synced to launch package. */
-    private var mHomePackage: String? = null
-    
-    /** Task ID of the Home package */
-    private var mHomeTaskId: Int? = null
-    
     /** Task ID of the default launch package */
     private var mLauncherPackageTaskId: Int? = null
     private var mIsDestroying = false
@@ -127,7 +112,6 @@ class AaVirtualDisplayAdapter(
         mTrackedPackageUsers.clear()
         refreshLauncherPackage("connect")
         trackPackage(mLauncherPackage, 0)
-        trackPackage(mHomePackage, 0)
         val indent = Binder.clearCallingIdentity()
         try {
             mVirtualDisplay = Instances.displayManager.createVirtualDisplay(
@@ -191,13 +175,8 @@ class AaVirtualDisplayAdapter(
             )
         }
         Instances.iActivityTaskManager.registerTaskStackListener(mTaskStackListener)
-        // When virtual display is created, launch default package first (if configured)
-        if(mLauncherPackage != null) {
-            startDefaultPackage()
-        } else {
-            // If no default package is configured, launch Home package as fallback
-            startHomeLauncher()
-        }
+        // Only launch the explicitly configured app; never fall back to a phone launcher.
+        startDefaultPackage()
         onVirtualDisplayCreated(mDisplayId)
     }
 
@@ -206,17 +185,14 @@ class AaVirtualDisplayAdapter(
         mDensityDpi = densityDpi
         refreshLauncherPackage("reconnect")
         trackPackage(mLauncherPackage, 0)
-        trackPackage(mHomePackage, 0)
     }
 
     fun onDestroy() {
         mIsDestroying = true
         trackPackage(mLauncherPackage, 0)
-        trackPackage(mHomePackage, 0)
         val protectedPackages = linkedSetOf<String>().apply {
             add(BuildConfig.APPLICATION_ID)
             mLauncherPackage?.trim()?.takeIf { it.isNotEmpty() }?.let { add(it) }
-            mHomePackage?.trim()?.takeIf { it.isNotEmpty() }?.let { add(it) }
             addAll(getForegroundPackagesOnDisplay(Display.DEFAULT_DISPLAY))
         }
         tryOrNull { Instances.iActivityTaskManager.unregisterTaskStackListener(mTaskStackListener) }
@@ -291,16 +267,6 @@ class AaVirtualDisplayAdapter(
     fun onPressKey(action: Int) {
         injectInputEvent(createKeyEvent(KeyEvent.ACTION_DOWN, action))
         injectInputEvent(createKeyEvent(KeyEvent.ACTION_UP, action))
-        if (action == KeyEvent.KEYCODE_BACK) {
-            // Match Home-button behavior: if back navigation returns to home and a PiP task is left
-            // pinned, remove it so the launcher view is clean.
-            Handler(Looper.getMainLooper()).post {
-                clearPinnedTasksIfHomeFront("back")
-            }
-            Handler(Looper.getMainLooper()).postDelayed({
-                clearPinnedTasksIfHomeFront("back-delay")
-            }, 350L)
-        }
     }
 
     fun addMirror(surfaceControl: SurfaceControl){
@@ -356,34 +322,9 @@ class AaVirtualDisplayAdapter(
         }
     }
 
-    /**
-     * Launch the app corresponding to Home key (usually the launcher)
-     * Called when user presses Home key
-     */
+    /** Reopen the explicitly configured default app from the AA rail Home button. */
     fun startLauncher(){
-        startHomeLauncher()
-        // On some ROMs, moving Home to front auto-pins the previous video task (PiP).
-        // Clean up pinned tasks on the AA virtual display so Home returns to a normal state.
-        clearPinnedTasksOnDisplay("home")
-        Handler(Looper.getMainLooper()).postDelayed({
-            clearPinnedTasksOnDisplay("home-delay")
-        }, 350L)
-    }
-
-    /**
-     * Launch the app corresponding to Home package name
-     * If the app is already running, bring it to front; otherwise start a new instance
-     */
-    private fun startHomeLauncher(){
-        if(mHomePackage == null) {
-            log(TAG, "startHomeLauncher skipped: no launcher package")
-            return
-        }
-        if(mHomeTaskId != null){
-            moveTaskToFront(mHomeTaskId!!)
-        } else {
-            startActivity(mHomePackage!!, 0)
-        }
+        startDefaultPackage()
     }
 
     /**
@@ -392,7 +333,7 @@ class AaVirtualDisplayAdapter(
      */
     private fun startDefaultPackage(){
         if(mLauncherPackage == null) {
-            log(TAG, "startDefaultPackage skipped: no launcher package")
+            log(TAG, "startDefaultPackage skipped: no configured package")
             return
         }
         if(mLauncherPackageTaskId != null){
@@ -439,32 +380,11 @@ class AaVirtualDisplayAdapter(
     private fun refreshLauncherPackage(reason: String) {
         config?.reload()
         val configured = AADisplayConfig.LauncherPackage.get(config)
-        val resolved = resolveLauncherPackage(configured)
+        val resolved = configured?.trim()?.takeIf { it.isNotEmpty() && resolveLaunchComponent(it) != null }
         if (mLauncherPackage != resolved) {
             log(TAG, "launcher[$reason]: configured=${configured.orEmpty()}, resolved=${resolved.orEmpty()}")
         }
         mLauncherPackage = resolved
-        mHomePackage = resolved
-    }
-
-    private fun resolveLauncherPackage(configured: String?): String? {
-        val requested = configured?.trim()?.takeIf { it.isNotEmpty() }
-        if (requested != null && resolveLaunchComponent(requested) != null) {
-            return requested
-        }
-        if (requested != null) {
-            log(TAG, "configured launcher unavailable: $requested")
-        }
-
-        val defaultHome = resolveDefaultHomePackage()
-        val homeCandidates = queryHomeLauncherPackages()
-        val fallback = homeCandidates.firstOrNull { pkg -> pkg != defaultHome }
-
-        log(
-            TAG,
-            "launcher fallback: defaultHome=${defaultHome.orEmpty()}, candidates=${homeCandidates.joinToString()}, selected=${fallback.orEmpty()}"
-        )
-        return fallback
     }
 
     private fun resolveLaunchComponent(packageName: String): ComponentName? {
@@ -479,50 +399,6 @@ class AaVirtualDisplayAdapter(
         }
     }
 
-    private fun resolveDefaultHomePackage(): String? {
-        val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        val resolveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.resolveActivity(
-                homeIntent,
-                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong())
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
-        } ?: return null
-
-        val pkg = resolveInfo.activityInfo?.packageName?.trim().orEmpty()
-        val cls = resolveInfo.activityInfo?.name?.trim().orEmpty()
-        return pkg.takeIf { isHomeCandidateAllowed(it, cls) }
-    }
-
-    private fun queryHomeLauncherPackages(): List<String> {
-        val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        val candidates = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.queryIntentActivities(
-                homeIntent,
-                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_ALL.toLong())
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.queryIntentActivities(homeIntent, PackageManager.MATCH_ALL)
-        }
-
-        return candidates
-            .mapNotNull { resolveInfo ->
-                val pkg = resolveInfo.activityInfo?.packageName?.trim().orEmpty()
-                val cls = resolveInfo.activityInfo?.name?.trim().orEmpty()
-                pkg.takeIf { isHomeCandidateAllowed(it, cls) && resolveLaunchComponent(it) != null }
-            }
-            .distinct()
-    }
-
-    private fun isHomeCandidateAllowed(pkg: String, cls: String): Boolean {
-        if (pkg.isBlank() || BLOCKED_HOME_PACKAGES.contains(pkg)) return false
-        if (cls.contains("FallbackHome", ignoreCase = true)) return false
-        if (cls.contains("ResolverActivity", ignoreCase = true)) return false
-        return true
-    }
 
     fun startTaskId(taskId: Int?, packageName: String, userId: Int): Boolean {
         if(mDisplayId == Display.INVALID_DISPLAY) return false
@@ -575,10 +451,7 @@ class AaVirtualDisplayAdapter(
         }
     }
 
-    /**
-     * Move the second task to front
-     * If the second task is the Home package app, move the third task to front instead
-     */
+    /** Move the second task on the virtual display to front. */
     fun moveSecondTaskToFront(){
         if(mDisplayId == Display.INVALID_DISPLAY)
             return
@@ -586,60 +459,7 @@ class AaVirtualDisplayAdapter(
         if(allRootTaskInfosOnDisplay.size < 2){
             return
         }
-        moveTaskToFront(
-            if(allRootTaskInfosOnDisplay.size == 2 || allRootTaskInfosOnDisplay[1].topActivity!!.packageName != mHomePackage){
-                allRootTaskInfosOnDisplay[1].taskId
-            } else {
-                allRootTaskInfosOnDisplay[2].taskId
-            }
-        )
-    }
-
-    private fun clearPinnedTasksOnDisplay(reason: String) {
-        if (mDisplayId == Display.INVALID_DISPLAY) return
-        val tasks = try {
-            Instances.iActivityTaskManager.getAllRootTaskInfosOnDisplay(mDisplayId)
-        } catch (e: Throwable) {
-            log(TAG, "clearPinnedTasksOnDisplay error:", e)
-            return
-        }
-        tasks
-            .filter { taskInfo ->
-                taskInfo.topActivity != null && isPinnedWindowMode(taskInfo)
-            }
-            .forEach { taskInfo ->
-                log(
-                    TAG,
-                    "clearPinnedTasksOnDisplay[$reason]: remove task=${taskInfo.taskId}, top=${taskInfo.topActivity?.flattenToShortString()}"
-                )
-                removeTask(taskInfo.taskId)
-            }
-    }
-
-    private fun clearPinnedTasksIfHomeFront(reason: String) {
-        if (mDisplayId == Display.INVALID_DISPLAY) return
-        val tasks = try {
-            Instances.iActivityTaskManager.getAllRootTaskInfosOnDisplay(mDisplayId)
-        } catch (e: Throwable) {
-            log(TAG, "clearPinnedTasksIfHomeFront error:", e)
-            return
-        }
-        if (tasks.isEmpty()) return
-        val front = tasks.firstOrNull { it.topActivity != null }
-        val frontPackage = front?.topActivity?.packageName
-        if (frontPackage == null || mHomePackage == null) return
-        if (frontPackage == mHomePackage) {
-            clearPinnedTasksOnDisplay(reason)
-        }
-    }
-
-    private fun isPinnedWindowMode(taskInfo: Any): Boolean {
-        return try {
-            val mode = taskInfo.invokeMethod("getWindowingMode", args(), argTypes()) as? Int
-            mode == WINDOWING_MODE_PINNED
-        } catch (_: Throwable) {
-            false
-        }
+        moveTaskToFront(allRootTaskInfosOnDisplay[1].taskId)
     }
 
     private fun injectInputEvent(event: InputEvent): Boolean {
@@ -699,7 +519,7 @@ class AaVirtualDisplayAdapter(
 
     /**
      * Get recent task list for the specified display
-     * Filter out ignored package names and Home package app
+     * Filter out ignored package names.
      */
     private fun recentTaskInfo(displayId: Int): List<RecentTaskInfo> {
         val allRootTaskInfosOnDisplay = Instances.iActivityTaskManager.getAllRootTaskInfosOnDisplay(displayId)
@@ -707,8 +527,7 @@ class AaVirtualDisplayAdapter(
         return allRootTaskInfosOnDisplay
             .map { taskInfo ->
                 val topActivity = taskInfo.topActivity ?: return@map null
-                // Filter out ignored package names and Home package
-                if(IGNORE_RECENT_PACKAGE.contains(topActivity.packageName) || mHomePackage == topActivity.packageName) {
+                if(IGNORE_RECENT_PACKAGE.contains(topActivity.packageName)) {
                     return@map null
                 }
 
@@ -775,35 +594,28 @@ class AaVirtualDisplayAdapter(
         override fun onActivityLaunchOnSecondaryDisplayRerouted(taskInfo: ActivityManager.RunningTaskInfo?, requestedDisplayId: Int) {}
         /**
          * Called when a new task is created
-         * Record task IDs for Home package and default launch package
+         * Record task IDs for the explicitly configured launch package.
          */
         override fun onTaskCreated(taskId: Int, componentName: ComponentName?) {
             val packageName = componentName?.packageName ?: return
             trackPackage(packageName, 0)
-            if(packageName == mHomePackage) {
-                mHomeTaskId = taskId
-            } else if(packageName == mLauncherPackage) {
+            if(packageName == mLauncherPackage) {
                 mLauncherPackageTaskId = taskId
             }
         }
         
         /**
          * Called when a task is removed
-         * If the removed task is the Home package, restart it
+         * Keep the task id current; explicit AA Home is responsible for relaunching it.
          */
         override fun onTaskRemoved(taskId: Int) {
             if(mIsDestroying) {
-                if(mHomeTaskId == taskId) {
-                    mHomeTaskId = null
-                } else if(mLauncherPackageTaskId == taskId) {
+                if(mLauncherPackageTaskId == taskId) {
                     mLauncherPackageTaskId = null
                 }
                 return
             }
-            if(mHomeTaskId == taskId) {
-                mHomeTaskId = null
-                startHomeLauncher()
-            } else if(mLauncherPackageTaskId == taskId) {
+            if(mLauncherPackageTaskId == taskId) {
                 mLauncherPackageTaskId = null
             }
         }

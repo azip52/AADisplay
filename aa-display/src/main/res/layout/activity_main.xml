@@ -1,70 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true">
 
     <LinearLayout
-        android:id="@+id/ll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="@dimen/m3_appbar_expanded_title_margin_horizontal"
-        android:paddingVertical="?dialogPreferredPadding"
-        tools:ignore="PrivateResource">
+        android:padding="16dp">
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mcv_status"
-            style="@style/Widget.Material3.CardView.Elevated"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:outlineAmbientShadowColor="?colorPrimary"
-            android:outlineSpotShadowColor="?colorPrimary"
-            android:stateListAnimator="@null"
-            app:cardBackgroundColor="?colorPrimary"
-            app:cardElevation="6dp"
-            app:cardPreventCornerOverlap="false">
-
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="?dialogPreferredPadding">
-
-                <ImageView
-                    android:id="@+id/iv_icon"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_centerVertical="true"
-                    app:srcCompat="@drawable/ic_round_check_circle_24"
-                    app:tint="?colorOnPrimary"
-                    tools:ignore="ContentDescription" />
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/tv_active"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="24dp"
-                    android:layout_toEndOf="@id/iv_icon"
-                    android:fontFamily="sans-serif-medium"
-                    android:textAppearance="?textAppearanceTitleMedium"
-                    android:textColor="?colorOnPrimary"
-                    android:textSize="16sp"
-                    tools:text="Activated" />
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/tv_version"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_below="@id/tv_active"
-                    android:layout_marginStart="24dp"
-                    android:layout_marginTop="2dp"
-                    android:layout_toEndOf="@id/iv_icon"
-                    android:textAppearance="?textAppearanceBodyMedium"
-                    android:textColor="?colorOnPrimary"
-                    tools:text="0.23#16.6-r1" />
-
+            android:layout_height="wrap_content">
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="16dp">
+                <ImageView android:id="@+id/iv_icon" android:layout_width="24dp" android:layout_height="24dp" android:layout_centerVertical="true" app:srcCompat="@drawable/ic_round_check_circle_24" app:tint="?colorOnPrimary" />
+                <com.google.android.material.textview.MaterialTextView android:id="@+id/tv_active" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="24dp" android:layout_toEndOf="@id/iv_icon" android:textAppearance="?textAppearanceTitleMedium" android:textColor="?colorOnPrimary" />
+                <com.google.android.material.textview.MaterialTextView android:id="@+id/tv_version" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_below="@id/tv_active" android:layout_marginStart="24dp" android:layout_toEndOf="@id/iv_icon" android:textAppearance="?textAppearanceBodyMedium" android:textColor="?colorOnPrimary" />
             </RelativeLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -73,38 +27,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="?dialogPreferredPadding">
-
-                <com.google.android.material.textview.MaterialTextView
-                    style="@style/DeviceInfoDialogLabel"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/info_root_privilege" />
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/root_privilege"
-                    style="@style/DeviceInfoDialogValue"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-                <com.google.android.material.textview.MaterialTextView
-                    style="@style/DeviceInfoDialogLabel"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/info_system_version" />
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/system_version"
-                    style="@style/DeviceInfoDialogValue"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <com.google.android.material.textview.MaterialTextView style="@style/DeviceInfoDialogLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/info_root_privilege" />
+                <com.google.android.material.textview.MaterialTextView android:id="@+id/root_privilege" style="@style/DeviceInfoDialogValue" android:layout_width="match_parent" android:layout_height="wrap_content" />
+                <com.google.android.material.textview.MaterialTextView style="@style/DeviceInfoDialogLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/info_system_version" />
+                <com.google.android.material.textview.MaterialTextView android:id="@+id/system_version" style="@style/DeviceInfoDialogValue" android:layout_width="match_parent" android:layout_height="wrap_content" />
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
@@ -112,179 +40,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="?dialogPreferredPadding">
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_toStartOf="@id/switch_auto_open"
-                        android:orientation="vertical">
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/auto_open_title"
-                            android:textAppearance="?textAppearanceTitleMedium" />
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="@string/auto_open_summary"
-                            android:textAppearance="?textAppearanceBodyMedium"
-                            android:textColor="?android:attr/textColorSecondary" />
-                    </LinearLayout>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switch_auto_open"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true" />
-                </RelativeLayout>
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_toStartOf="@id/switch_disable_waze_on_aa"
-                        android:orientation="vertical">
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/disable_waze_on_aa_title"
-                            android:textAppearance="?textAppearanceTitleMedium" />
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="@string/disable_waze_on_aa_summary"
-                            android:textAppearance="?textAppearanceBodyMedium"
-                            android:textColor="?android:attr/textColorSecondary" />
-                    </LinearLayout>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switch_disable_waze_on_aa"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true" />
-                </RelativeLayout>
-
-                <RelativeLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_toStartOf="@id/switch_disable_google_maps_on_aa"
-                        android:orientation="vertical">
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/disable_google_maps_on_aa_title"
-                            android:textAppearance="?textAppearanceTitleMedium" />
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="@string/disable_google_maps_on_aa_summary"
-                            android:textAppearance="?textAppearanceBodyMedium"
-                            android:textColor="?android:attr/textColorSecondary" />
-                    </LinearLayout>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switch_disable_google_maps_on_aa"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true" />
-                </RelativeLayout>
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/tv_default_home"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:textAppearance="?textAppearanceBodyMedium"
-                    android:textColor="?android:attr/textColorSecondary"
-                    tools:text="Default Home Launcher: com.example.launcher" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_launcher_package"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:hint="@string/default_launch_package_title"
-                    app:helperText="@string/default_launch_package_summary">
-
-                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                        android:id="@+id/actv_launcher_package"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:imeOptions="actionNext"
-                        android:inputType="none"
-                        android:maxLines="1"
-                        android:singleLine="true" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_launcher_package" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/default_launch_package_title" app:helperText="@string/default_launch_package_summary">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_launcher_package" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/tv_package_validation"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:textAppearance="?textAppearanceBodySmall"
-                    android:visibility="gone"
-                    tools:text="Launch package is safe to use"
-                    tools:visibility="visible" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_delay_destroy_time"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:hint="@string/delay_destroy_time_title">
-
-                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                        android:id="@+id/actv_delay_destroy_time"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:imeOptions="actionNext"
-                        android:inputType="none"
-                        android:maxLines="1"
-                        android:singleLine="true" />
+                <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_delay_destroy_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:hint="@string/delay_destroy_time_title" app:helperText="@string/delay_destroy_time_summary">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_delay_destroy_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_save"
-                    style="@style/Widget.Material3.Button"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/save_settings" />
+                <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:hint="@string/create_virtual_display_before_title" app:helperText="@string/shell_command_summary">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_create_virtual_display_before" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="top" android:inputType="textMultiLine" android:minLines="3" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:hint="@string/destroy_virtual_display_after_title" app:helperText="@string/shell_command_summary">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_destroy_virtual_display_after" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="top" android:inputType="textMultiLine" android:minLines="3" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.button.MaterialButton android:id="@+id/btn_save" style="@style/Widget.Material3.Button" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/save_settings" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
     </LinearLayout>
 </ScrollView>

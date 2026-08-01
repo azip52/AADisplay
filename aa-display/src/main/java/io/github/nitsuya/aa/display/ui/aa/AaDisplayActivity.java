@@ -67,7 +67,13 @@ public class AaDisplayActivity extends CarActivity {
         switch (keyCode){
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+                AaDisplayActivityKt.INSTANCE.pressKey(KeyEvent.KEYCODE_DPAD_CENTER);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                AaDisplayActivityKt.INSTANCE.pressKey(keyCode);
                 return true;
             case KeyEvent.KEYCODE_BACK:
                 AaDisplayActivityKt.INSTANCE.pressKey(keyCode);

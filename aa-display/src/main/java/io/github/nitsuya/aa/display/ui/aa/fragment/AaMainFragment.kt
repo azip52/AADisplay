@@ -205,14 +205,22 @@ class AaMainFragment : BaseFragment<FragmentAaMainBinding>(FragmentAaMainBinding
         }
     }
 
+    // Target the sw600 large-screen layout without changing the display's pixel dimensions.
+    // For example: 720x480 -> 128 dpi, 1920x720 -> 192 dpi, 1920x1080 -> 288 dpi.
+    private fun adaptiveDisplayDpi(width: Int, height: Int): Int {
+        val shortSide = minOf(width, height)
+        if (shortSide <= 0) return resources.displayMetrics.densityDpi
+        return (shortSide * 160 / 600).coerceAtLeast(1)
+    }
+
     private fun requestDisplay(reason: String) {
         if (!this::config.isInitialized) return
 
         val displayWidth = baseBinding.tvDisplay.width
         val displayHeight = baseBinding.tvDisplay.height
-        val displayDpi = AADisplayConfig.VirtualDisplayDpi.get(config).let {
-            if(it <= 50) resources.displayMetrics.densityDpi
-            else it
+        val displayDpi = AADisplayConfig.VirtualDisplayDpi.get(config).let { configured ->
+            if (configured > 50) configured
+            else adaptiveDisplayDpi(displayWidth, displayHeight)
         }
         Log.i(TAG, "requestDisplay[$reason]: ${displayWidth}x$displayHeight,$displayDpi available=${baseBinding.tvDisplay.isAvailable} requested=$isDisplayCreateRequested display=$displayId")
         if (displayWidth <= 0 || displayHeight <= 0) {

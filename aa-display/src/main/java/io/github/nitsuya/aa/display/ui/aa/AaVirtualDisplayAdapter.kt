@@ -128,7 +128,7 @@ class AaVirtualDisplayAdapter(
                 surface,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC
                     or DisplayManager.VIRTUAL_DISPLAY_FLAG_SECURE
-                    or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION
+                    // Keep this app display out of the presentation-display category.
                     or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY
                     //or (1 shl 8) //DisplayManager.VIRTUAL_DISPLAY_FLAG_DESTROY_CONTENT_ON_REMOVAL
                     or (1 shl 10) //DisplayManager.VIRTUAL_DISPLAY_FLAG_TRUSTED

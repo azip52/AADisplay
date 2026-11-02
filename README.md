@@ -12,8 +12,9 @@ AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 X
 
 ## 版本与适配情况
 
-- 当前模块版本：`0.23#17.2-r7`
-- 当前已适配并实车测试的 Android Auto 版本：`17.2`
+- 当前模块版本：`0.23#17.8-r8`
+- 历史已实车测试的 Android Auto 版本：`17.2`。
+- 本版包含 Android Auto `17.8` 的自动打开适配，尚待实车验证。
 - 最低 Android 系统版本：Android 12（API 31）
 
 ## 主要功能
@@ -21,7 +22,8 @@ AADisplay 是一个通过虚拟屏幕在 Android Auto 中显示手机应用的 X
 - 在 Android Auto 中创建并显示手机虚拟屏。
 - 可填写任意可启动应用包名，例如 `com.example.app`。
 - 支持明确指定 Activity，例如 `com.example.app/.MainActivity`。
-- 可选择连接 Android Auto 后自动打开 AADisplay。
+- 可选择连接 Android Auto 后自动打开 AADisplay，使用车载 SDK 启动路径，默认关闭。
+- 虚拟屏默认根据显示区域自动计算 DPI，目标为 sw600 大屏布局；已有大于 50 的手动 DPI 配置继续优先。应用字号和布局可能变化。
 - 使用 Android Auto 原生底部操作栏及焦点导航。
 - 支持实体返回键、方向键、确认键和旋钮输入（仅在我自己的车机上测试）。
 - 可设置 Android Auto 断开后的虚拟屏销毁延迟。
